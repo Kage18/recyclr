@@ -41,7 +41,7 @@ router.post("/userSale",userValidate,(req,res)=>{
 })
 
 router.get("/userSale",userValidate,(req,res)=>{
-  purchase.find().populate('seller').then((purchases)=>{
+  purchase.find(req.query).populate('seller partsWorking item').then((purchases)=>{
     res.send(purchases)
   }).catch((err)=>{
     console.log(err)
@@ -49,8 +49,35 @@ router.get("/userSale",userValidate,(req,res)=>{
   })
 })
 
-router.post("/acceptUserSale",userValidate,(req,res)=>{
+router.post("/acceptUserSale",partnerValidate,(req,res)=>{
   purchase.findByIdAndUpdate(req.body.purchaseId,{status:"Accepted"},{new:true}).then((updated)=>{
+    res.send(updated)
+  }).catch((err)=>{
+    console.log(err)
+    res.send(400).send({message:"Invalid"})
+  })
+})
+
+router.post("/rejectUserSale",partnerValidate,(req,res)=>{
+  purchase.findByIdAndUpdate(req.body.purchaseId,{status:"Rejected"},{new:true}).then((updated)=>{
+    res.send(updated)
+  }).catch((err)=>{
+    console.log(err)
+    res.send(400).send({message:"Invalid"})
+  })
+})
+
+router.post("/claimUserSale",partnerValidate,(req,res)=>{
+  purchase.findByIdAndUpdate(req.body.purchaseId,{shop:req.body.userId},{new:true}).then((updated)=>{
+    res.send(updated)
+  }).catch((err)=>{
+    console.log(err)
+    res.send(400).send({message:"Invalid"})
+  })
+})
+
+router.post("/unclaimUserSale",partnerValidate,(req,res)=>{
+  purchase.findByIdAndUpdate(req.body.purchaseId,{shop:null},{new:true}).then((updated)=>{
     res.send(updated)
   }).catch((err)=>{
     console.log(err)
@@ -64,7 +91,7 @@ function estimate(partsList){
     total = total + partsList[i].price
   }
   total = total*1.2
-  return total
+  return Math.round(total)
 }
 
 function userValidate(req,res,next){
@@ -72,6 +99,19 @@ function userValidate(req,res,next){
     users.findById(id).then((user)=>{
         req.body.userId = id;
         next();
+    })
+  }).catch((err)=>{
+    res.status(403).send({message:"Token Error"})
+  })
+}
+function partnerValidate(req,res,next){
+  token2id(req.get("x-access-token")).then((id)=>{
+    users.findById(id).then((partner)=>{
+      if(partner.userType=='partner'){
+        req.body.userId = id;
+        next();
+      }
+      else res.status(403).send({message:"user is not a partner"})
     })
   }).catch((err)=>{
     res.status(403).send({message:"Token Error"})
